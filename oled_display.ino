@@ -38,11 +38,10 @@ void setup() {
 }
 
 void loop() {
-  for (;;)
-  {
-    gameLoopFunc gameLoop = makeGame();
-    gameLoop();
-  }
+  static int deltaTime = 0;
+  long currentTime = millis();
+  gameLoop(deltaTime);
+  deltaTime = millis() - currentTime;
 }
 
 bool check_if_out_of_bounds(int x, int y, int width, int height) {
@@ -116,31 +115,26 @@ double get_acceleration_10(int frame, int jump_power) {
   }
 }
 
-gameLoopFunc makeGame() {
- // return gameloop();
- return gameLoop;
-}
-
-void gameLoop() {
+void gameLoop(int deltaTime) {
   // put your main code here, to run repeatedly:
   // make a dynamically sized array of obstacles
-  static Obstacle obstacles[10];
+  static Obstacle obstacles[5];
   static int width = 10;
   static int height = 10;
   static double player_acceleration_added = 0;
   static double player_y = SCREEN_HEIGHT - height - 5;
-  static bool player_is_jumping = false;
-  static bool player_is_falling = false;
+  static int player_state = 0; // 0 = idle, 1 = jumping, 2 = falling
   static int jump_frame = 1;
   static int frames_from_last_spawn = 0;
   static bool game_over = false;
   static int score = 0;
   int pressed = digitalRead(BUTTON_PIN);
   oled.clearDisplay();
-  if (pressed == HIGH && !player_is_falling) { // if the button is pressed and the player is not falling
-    player_is_jumping = true;
+  if (pressed == HIGH && player_state != 2) { // if the button is pressed and the player is not falling
+    Serial.println("Button pressed");
+    player_state = 1;
   }
-  if (player_is_jumping) {
+  if (player_state == 1) {
     double player_acceleration_this_frame = get_acceleration_10(jump_frame, PLAYER_JUMP_POWER);
     Serial.print(player_acceleration_this_frame);
     Serial.print(" ");
@@ -149,19 +143,17 @@ void gameLoop() {
     player_acceleration_added += player_acceleration_this_frame;
     jump_frame++;
     if (player_acceleration_added >= PLAYER_JUMP_POWER) {
-      player_is_jumping = false;
-      player_is_falling = true;
+      player_state = 2;
     } else if (jump_frame > FRAMES_TO_JUMP) {
-      player_is_jumping = false;
-      player_is_falling = true;
+      player_state = 2;
     }
-  } else if (player_is_falling) {
+  } else if (player_state == 2) {
     double player_acceleration_this_frame = get_acceleration_10(jump_frame, PLAYER_JUMP_POWER);
     player_y += player_acceleration_this_frame;
     player_acceleration_added -= player_acceleration_this_frame;
     jump_frame--;
     if (player_acceleration_added <= 0) {
-      player_is_falling = false;
+      player_state = 0;
       jump_frame = 1;
     }
   }
@@ -228,8 +220,7 @@ void gameLoop() {
     height = 10;
     player_acceleration_added = 0;
     player_y = SCREEN_HEIGHT - height - 5;
-    player_is_jumping = false;
-    player_is_falling = false;
+    player_state = 0;
     jump_frame = 1;
     frames_from_last_spawn = 0;
     game_over = false;
