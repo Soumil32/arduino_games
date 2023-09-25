@@ -5,9 +5,11 @@
 #define SCREEN_WIDTH 128 // OLED display width,  in pixels
 #define SCREEN_HEIGHT 64 // OLED display height, in pixels
 #define BUTTON_PIN 6
-#define PLAYER_JUMP_POWER 40
-#define FRAMES_TO_JUMP 20
+#define PLAYER_JUMP_POWER 35
+#define FRAMES_TO_JUMP 15
 #define OBSTACLE_SPEED 10 // this is in pixels per second
+#define OBSTACLE_SPAWN_RATE_MAX 2000 // this is the max amount of time to wait in milliseconds
+#define OBSTACLE_SPAWN_RATE_MIN 1200 // this is the min amount of time to wait in milliseconds
 #define PLAYER_X_OFFSET 15
 
 typedef void (*gameLoopFunc)(float);
@@ -134,7 +136,7 @@ void gameLoop(float deltaTime) {
   static double player_y = SCREEN_HEIGHT - height - 5;
   static int player_state = 0; // 0 = idle, 1 = jumping, 2 = falling
   static int jump_frame = 1;
-  static int frames_from_last_spawn = 0;
+  static int time_since_last_spawn = 0; // this is in milliseconds
   static bool game_over = false;
   static float score = 0;
   int pressed = digitalRead(BUTTON_PIN);
@@ -163,11 +165,12 @@ void gameLoop(float deltaTime) {
     }
   }
   
-  if (frames_from_last_spawn >= random(40, 80)) {
+  int timeToWait = random(OBSTACLE_SPAWN_RATE_MIN, OBSTACLE_SPAWN_RATE_MAX);
+  if (time_since_last_spawn >= timeToWait) {
+    Serial.println(timeToWait);
     // generate a random number which will decide if an obstacle will be spawned
     int random_number = random(0, 3);
     if (random_number == 1) {
-      Serial.println("Spawning obstacle");
       int obstacle_width = random(10, 15);
       int obstacle_height = random(10, 18);
       int obstacle_x = SCREEN_WIDTH - obstacle_width;
@@ -179,10 +182,10 @@ void gameLoop(float deltaTime) {
           break;
         }
       }
-      frames_from_last_spawn = 0;
+      time_since_last_spawn = 0;
     }
   } else {
-    frames_from_last_spawn++;
+    time_since_last_spawn += deltaTime * 1000;
   }
 
   for (int i = 0; i < 10; i++) {
@@ -230,7 +233,7 @@ void gameLoop(float deltaTime) {
     player_y = SCREEN_HEIGHT - height - 5;
     player_state = 0;
     jump_frame = 1;
-    frames_from_last_spawn = 0;
+    time_since_last_spawn = 0;
     game_over = false;
     score = 0;
     return;
