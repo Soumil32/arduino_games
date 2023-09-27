@@ -13,8 +13,6 @@
 #define PLAYER_X_OFFSET 15
 #define PLAYER_Y_OFFSET 5
 
-typedef void (*gameLoopFunc)(double);
-
 struct Obstacle {
   int x;
   int y;
@@ -44,10 +42,13 @@ void setup() {
 
 void loop() {
   static double deltaTime = 0;
-  //static gameLoopFunc gameLoop = makeGameLoopFunc();
   long currentTime = millis();
-  gameLoop(deltaTime);
-  deltaTime = (millis() - currentTime) / 1000.0;
+  bool gameOver = gameLoop(deltaTime);
+  if (gameOver) {
+    deltaTime = 0;
+  } else {
+    deltaTime = (millis() - currentTime) / 1000.0;
+  }
 }
 
 bool check_if_out_of_bounds(int x, int y, int width, int height) {
@@ -77,7 +78,8 @@ double get_acceleration(int total_time, float delta_time) {
 
 /// @brief plays the game 
 /// @param deltaTime delta time in seconds
-void gameLoop(double deltaTime) {
+/// @return returns wether or not the game is over
+bool gameLoop(double deltaTime) {
   // put your main code here, to run repeatedly:
   // make a dynamically sized array of obstacles
   static Obstacle obstacles[10];
@@ -154,21 +156,25 @@ void gameLoop(double deltaTime) {
     }
   }
 
-  oled.setTextSize(0);
-  oled.setCursor(SCREEN_WIDTH / 2 - 10, 0);
-  oled.setTextColor(SSD1306_WHITE);
-  oled.println("Score: " + String(int(floor(score))));
-
   oled.drawRect(PLAYER_X_OFFSET, player_y, width, height, SSD1306_WHITE);
   oled.drawFastHLine(0, SCREEN_HEIGHT - PLAYER_Y_OFFSET, SCREEN_WIDTH, SSD1306_WHITE);
   if (game_over) {
+    oled.clearDisplay();
     oled.setTextSize(2);
-    oled.setCursor(0, 0);
+    oled.setCursor(10, 0);
     oled.setTextColor(SSD1306_WHITE);
     oled.println("Game Over");
+    oled.setTextSize(1);
+    oled.setCursor(10, SCREEN_HEIGHT / 2 - 10);
+    oled.println("Score: " + String(int(floor(score))) + " points");
+    oled.setCursor(10, SCREEN_HEIGHT / 2 + 10);
+    oled.println("Press the button to restart");
     oled.display();
     Serial.println("Game Over");
-    delay(2000);
+    waitForButtonPress();
+    waitForButtonRelease();
+    Serial.println("Button Pressed.. restarting game");
+    
     for (int i = 0; i < 10; i++) {
       obstacles[i].is_active = false;
     }
@@ -180,10 +186,28 @@ void gameLoop(double deltaTime) {
     time_since_last_spawn = 0;
     game_over = false;
     score = 0;
-    return;
+    return true;
   } else {
     score += 2 * deltaTime;
+    oled.setTextSize(0);
+    oled.setCursor(SCREEN_WIDTH / 2 - 10, 0);
+    oled.setTextColor(SSD1306_WHITE);
+    oled.println("Score: " + String(int(floor(score))));
     oled.display();
+    return false;
   }
-  //delay(5);
 } 
+
+void waitForButtonPress() {
+  int pressed = digitalRead(BUTTON_PIN);
+  while (pressed == LOW) {
+    pressed = digitalRead(BUTTON_PIN);
+  }
+}
+
+void waitForButtonRelease() {
+  int pressed = digitalRead(BUTTON_PIN);
+  while (pressed == HIGH) {
+    pressed = digitalRead(BUTTON_PIN);
+  }
+}
