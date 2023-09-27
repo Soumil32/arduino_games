@@ -6,7 +6,7 @@
 #define SCREEN_HEIGHT 64 // OLED display height, in pixels
 #define BUTTON_PIN 6
 #define PLAYER_JUMP_POWER 35.0
-#define MS_TO_JUMP 1650
+#define MS_TO_JUMP 1700
 #define OBSTACLE_SPEED 10 // this is in pixels per second
 #define OBSTACLE_SPAWN_RATE_MAX 2500 // this is the max amount of time to wait in milliseconds
 #define OBSTACLE_SPAWN_RATE_MIN 2000 // this is the min amount of time to wait in milliseconds
@@ -119,8 +119,8 @@ bool gameLoop(double deltaTime) {
     // generate a random number which will decide if an obstacle will be spawned
     int random_number = random(0, 3);
     if (random_number == 1) {
-      int obstacle_width = random(8, 12);
-      int obstacle_height = random(8, 19);
+      int obstacle_width = random(8, 11);
+      int obstacle_height = random(8, 15);
       int obstacle_x = SCREEN_WIDTH - obstacle_width;
       int obstacle_y = SCREEN_HEIGHT - obstacle_height - PLAYER_Y_OFFSET;
       Obstacle obstacle = {obstacle_x, obstacle_y, obstacle_width, obstacle_height, true};
@@ -163,17 +163,19 @@ bool gameLoop(double deltaTime) {
     oled.setTextSize(2);
     oled.setCursor(10, 0);
     oled.setTextColor(SSD1306_WHITE);
-    oled.println("Game Over");
+    oled.println(F("Game Over"));
     oled.setTextSize(1);
     oled.setCursor(10, SCREEN_HEIGHT / 2 - 10);
-    oled.println("Score: " + String(int(floor(score))) + " points");
+    String score_string = "";
+    score_string.concat(F("Score: "));
+    score_string.concat(int(floor(score)));
+    score_string.concat(F(" points"));
+    oled.println(score_string);
     oled.setCursor(10, SCREEN_HEIGHT / 2 + 10);
-    oled.println("Press the button to restart");
+    oled.println(F("Press to restart..."));
     oled.display();
-    Serial.println("Game Over");
     waitForButtonPress();
     waitForButtonRelease();
-    Serial.println("Button Pressed.. restarting game");
     
     for (int i = 0; i < 10; i++) {
       obstacles[i].is_active = false;
