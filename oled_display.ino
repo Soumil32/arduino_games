@@ -13,7 +13,7 @@
 #define PLAYER_X_OFFSET 15
 #define PLAYER_Y_OFFSET 5
 
-typedef void (*gameLoopFunc)(float);
+typedef void (*gameLoopFunc)(double);
 
 struct Obstacle {
   int x;
@@ -43,15 +43,11 @@ void setup() {
 }
 
 void loop() {
-  static float deltaTime = 0;
-  static gameLoopFunc gameLoop = makeGameLoopFunc();
+  static double deltaTime = 0;
+  //static gameLoopFunc gameLoop = makeGameLoopFunc();
   long currentTime = millis();
   gameLoop(deltaTime);
   deltaTime = (millis() - currentTime) / 1000.0;
-}
-
-gameLoopFunc makeGameLoopFunc() {
-  return gameLoop;
 }
 
 bool check_if_out_of_bounds(int x, int y, int width, int height) {
@@ -81,7 +77,7 @@ double get_acceleration(int total_time, float delta_time) {
 
 /// @brief plays the game 
 /// @param deltaTime delta time in seconds
-void gameLoop(float deltaTime) {
+void gameLoop(double deltaTime) {
   // put your main code here, to run repeatedly:
   // make a dynamically sized array of obstacles
   static Obstacle obstacles[10];
@@ -115,7 +111,7 @@ void gameLoop(float deltaTime) {
       player_y = SCREEN_HEIGHT - height - PLAYER_Y_OFFSET;
     }
   }
-  
+
   int timeToWait = random(OBSTACLE_SPAWN_RATE_MIN, OBSTACLE_SPAWN_RATE_MAX);
   if (time_since_last_spawn >= timeToWait) {
     // generate a random number which will decide if an obstacle will be spawned
@@ -161,7 +157,7 @@ void gameLoop(float deltaTime) {
   oled.setTextSize(0);
   oled.setCursor(SCREEN_WIDTH / 2 - 10, 0);
   oled.setTextColor(SSD1306_WHITE);
-  oled.println("Score: " + String(int(ceil(score))));
+  oled.println("Score: " + String(int(floor(score))));
 
   oled.drawRect(PLAYER_X_OFFSET, player_y, width, height, SSD1306_WHITE);
   oled.drawFastHLine(0, SCREEN_HEIGHT - PLAYER_Y_OFFSET, SCREEN_WIDTH, SSD1306_WHITE);
@@ -189,5 +185,5 @@ void gameLoop(float deltaTime) {
     score += 2 * deltaTime;
     oled.display();
   }
-  delay(5);
+  //delay(5);
 } 
