@@ -5,12 +5,13 @@
 #define SCREEN_WIDTH 128 // OLED display width,  in pixels
 #define SCREEN_HEIGHT 64 // OLED display height, in pixels
 #define BUTTON_PIN 6
-#define PLAYER_JUMP_POWER 35
-#define MS_TO_JUMP 100
+#define PLAYER_JUMP_POWER 35.0
+#define MS_TO_JUMP 1600
 #define OBSTACLE_SPEED 10 // this is in pixels per second
-#define OBSTACLE_SPAWN_RATE_MAX 2000 // this is the max amount of time to wait in milliseconds
-#define OBSTACLE_SPAWN_RATE_MIN 1200 // this is the min amount of time to wait in milliseconds
+#define OBSTACLE_SPAWN_RATE_MAX 2200 // this is the max amount of time to wait in milliseconds
+#define OBSTACLE_SPAWN_RATE_MIN 1500 // this is the min amount of time to wait in milliseconds
 #define PLAYER_X_OFFSET 15
+#define PLAYER_Y_OFFSET 5
 
 typedef void (*gameLoopFunc)(float);
 
@@ -67,11 +68,15 @@ bool check_if_out_of_bounds(int x, int y, int width, int height) {
   }
 }
 
-// get acceleration for each frame when there are 10 frames to jump
-double get_acceleration(int time_passed, int total_time, float delta_time) {
-  // in the first 5th of the time to jump, the player will accelerate by 1/3 of the total acceleration over the first 5th of the time to jump
-  // by the end of the first 5th of the time to jump, the player will have accelerated by 1/3  in total of the total acceleration
-  // after that until the 
+/// @brief get get the acceleration of the player each frame
+/// @param total_time The total time the player will be jumping for in milliseconds
+/// @param delta_time the time since the last frame
+/// @return returns the acceleration of the player this frame in pixels per millisecond
+double get_acceleration(int total_time, float delta_time) {
+  // jump at a constant rate for the entire duration
+  // the amount will be evened out by the amount of time passed since the last frame
+  double accelerationPerMillisecond = PLAYER_JUMP_POWER / total_time;
+  return accelerationPerMillisecond * (delta_time * 1000);
 }
 
 /// @brief plays the game 
@@ -83,7 +88,7 @@ void gameLoop(float deltaTime) {
   static int width = 10;
   static int height = 10;
   static double player_acceleration_added = 0;
-  static double player_y = SCREEN_HEIGHT - height - 5;
+  static double player_y = SCREEN_HEIGHT - height - PLAYER_Y_OFFSET;
   static int player_state = 0; // 0 = idle, 1 = jumping, 2 = falling
   static int time_since_jump = 1; // this is in milliseconds
   static int time_since_last_spawn = 0; // this is in milliseconds
@@ -95,23 +100,24 @@ void gameLoop(float deltaTime) {
     player_state = 1;
   }
   if (player_state == 1) {
-    double player_acceleration_this_frame = get_acceleration(time_since_jump, PLAYER_JUMP_POWER, deltaTime);
+    double player_acceleration_this_frame = get_acceleration(MS_TO_JUMP / 2 , deltaTime);
     player_y -= player_acceleration_this_frame;
     player_acceleration_added += player_acceleration_this_frame;
-    time_since_jump++;
     if (player_acceleration_added >= PLAYER_JUMP_POWER) {
       player_state = 2;
     } else if (time_since_jump > MS_TO_JUMP) {
       player_state = 2;
+      time_since_jump = 0;
     }
+    time_since_jump += deltaTime * 1000;
   } else if (player_state == 2) {
-    double player_acceleration_this_frame = get_acceleration(time_since_jump, PLAYER_JUMP_POWER, deltaTime);
+    double player_acceleration_this_frame = get_acceleration(MS_TO_JUMP / 2, deltaTime);
     player_y += player_acceleration_this_frame;
     player_acceleration_added -= player_acceleration_this_frame;
-    time_since_jump -= deltaTime * 1000;
     if (player_acceleration_added <= 0) {
       player_state = 0;
-      time_since_jump = 0;
+      player_acceleration_added = 0;
+      player_y = SCREEN_HEIGHT - height - PLAYER_Y_OFFSET;
     }
   }
   
@@ -120,12 +126,12 @@ void gameLoop(float deltaTime) {
     // generate a random number which will decide if an obstacle will be spawned
     int random_number = random(0, 3);
     if (random_number == 1) {
-      int obstacle_width = random(10, 15);
-      int obstacle_height = random(10, 18);
+      int obstacle_width = random(8, 12);
+      int obstacle_height = random(8, 14);
       int obstacle_x = SCREEN_WIDTH - obstacle_width;
-      int obstacle_y = SCREEN_HEIGHT - obstacle_height - 5;
+      int obstacle_y = SCREEN_HEIGHT - obstacle_height - PLAYER_Y_OFFSET;
       Obstacle obstacle = {obstacle_x, obstacle_y, obstacle_width, obstacle_height, true};
-      for (int i = 0; i < 5; i++) {
+      for (int i = 0; i < 10; i++) {
         if (!obstacles[i].is_active) {
           obstacles[i] = obstacle;
           break;
@@ -143,7 +149,8 @@ void gameLoop(float deltaTime) {
       obstacle.x -= OBSTACLE_SPEED * deltaTime;
       bool is_player_above_obstacle = player_y + height < obstacle.y;
       bool is_right_wall_colliding = !is_player_above_obstacle && PLAYER_X_OFFSET + width > obstacle.x;
-      bool is_player_bottom_colliding = player_y + height >= obstacle.y && player_y != SCREEN_HEIGHT - height - 5 && PLAYER_X_OFFSET + width > obstacle.x;
+      bool is_player_bottom_colliding = player_y + height >= obstacle.y && player_y != SCREEN_HEIGHT - height - PLAYER_Y_OFFSET && PLAYER_X_OFFSET > obstacle.x + obstacle.width;
+      Serial.println(is_player_bottom_colliding);
       bool is_left_wall_colliding = !is_player_above_obstacle && PLAYER_X_OFFSET > obstacle.x;
       if (check_if_out_of_bounds(obstacle.x, obstacle.y, obstacle.width, obstacle.height)) {
         obstacle.is_active = false;
@@ -164,7 +171,7 @@ void gameLoop(float deltaTime) {
   oled.println("Score: " + String(int(ceil(score))));
 
   oled.drawRect(PLAYER_X_OFFSET, player_y, width, height, SSD1306_WHITE);
-  oled.drawFastHLine(0, SCREEN_HEIGHT - 5, SCREEN_WIDTH, SSD1306_WHITE);
+  oled.drawFastHLine(0, SCREEN_HEIGHT - PLAYER_Y_OFFSET, SCREEN_WIDTH, SSD1306_WHITE);
   if (game_over) {
     oled.setTextSize(2);
     oled.setCursor(0, 0);
@@ -179,7 +186,7 @@ void gameLoop(float deltaTime) {
     width = 10;
     height = 10;
     player_acceleration_added = 0;
-    player_y = SCREEN_HEIGHT - height - 5;
+    player_y = SCREEN_HEIGHT - height - PLAYER_Y_OFFSET;
     player_state = 0;
     time_since_jump = 0;
     time_since_last_spawn = 0;
