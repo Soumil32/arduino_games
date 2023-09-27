@@ -6,10 +6,10 @@
 #define SCREEN_HEIGHT 64 // OLED display height, in pixels
 #define BUTTON_PIN 6
 #define PLAYER_JUMP_POWER 35.0
-#define MS_TO_JUMP 1600
+#define MS_TO_JUMP 1650
 #define OBSTACLE_SPEED 10 // this is in pixels per second
-#define OBSTACLE_SPAWN_RATE_MAX 2200 // this is the max amount of time to wait in milliseconds
-#define OBSTACLE_SPAWN_RATE_MIN 1500 // this is the min amount of time to wait in milliseconds
+#define OBSTACLE_SPAWN_RATE_MAX 2500 // this is the max amount of time to wait in milliseconds
+#define OBSTACLE_SPAWN_RATE_MIN 2000 // this is the min amount of time to wait in milliseconds
 #define PLAYER_X_OFFSET 15
 #define PLAYER_Y_OFFSET 5
 
@@ -89,14 +89,13 @@ void gameLoop(float deltaTime) {
   static int height = 10;
   static double player_acceleration_added = 0;
   static double player_y = SCREEN_HEIGHT - height - PLAYER_Y_OFFSET;
-  static int player_state = 0; // 0 = idle, 1 = jumping, 2 = falling
-  static int time_since_jump = 1; // this is in milliseconds
+  static short int player_state = 0; // 0 = idle, 1 = jumping, 2 = falling
   static int time_since_last_spawn = 0; // this is in milliseconds
   static bool game_over = false;
   static float score = 0;
   int pressed = digitalRead(BUTTON_PIN);
   oled.clearDisplay();
-  if (pressed == 1 && player_state != 2) { // if the button is pressed and the player is not falling
+  if (pressed == HIGH && player_state != 2) { // if the button is pressed and the player is not falling
     player_state = 1;
   }
   if (player_state == 1) {
@@ -105,11 +104,7 @@ void gameLoop(float deltaTime) {
     player_acceleration_added += player_acceleration_this_frame;
     if (player_acceleration_added >= PLAYER_JUMP_POWER) {
       player_state = 2;
-    } else if (time_since_jump > MS_TO_JUMP) {
-      player_state = 2;
-      time_since_jump = 0;
     }
-    time_since_jump += deltaTime * 1000;
   } else if (player_state == 2) {
     double player_acceleration_this_frame = get_acceleration(MS_TO_JUMP / 2, deltaTime);
     player_y += player_acceleration_this_frame;
@@ -127,7 +122,7 @@ void gameLoop(float deltaTime) {
     int random_number = random(0, 3);
     if (random_number == 1) {
       int obstacle_width = random(8, 12);
-      int obstacle_height = random(8, 14);
+      int obstacle_height = random(8, 19);
       int obstacle_x = SCREEN_WIDTH - obstacle_width;
       int obstacle_y = SCREEN_HEIGHT - obstacle_height - PLAYER_Y_OFFSET;
       Obstacle obstacle = {obstacle_x, obstacle_y, obstacle_width, obstacle_height, true};
@@ -147,25 +142,23 @@ void gameLoop(float deltaTime) {
     Obstacle obstacle = obstacles[i];
     if (obstacle.is_active) {
       obstacle.x -= OBSTACLE_SPEED * deltaTime;
-      bool is_player_above_obstacle = player_y + height < obstacle.y;
-      bool is_right_wall_colliding = !is_player_above_obstacle && PLAYER_X_OFFSET + width > obstacle.x;
-      bool is_player_bottom_colliding = player_y + height >= obstacle.y && player_y != SCREEN_HEIGHT - height - PLAYER_Y_OFFSET && PLAYER_X_OFFSET > obstacle.x + obstacle.width;
-      Serial.println(is_player_bottom_colliding);
-      bool is_left_wall_colliding = !is_player_above_obstacle && PLAYER_X_OFFSET > obstacle.x;
+      // do some AABB collision detection
+      if (player_y <= obstacle.y + obstacle.height && player_y + height >= obstacle.y) {
+        if (PLAYER_X_OFFSET + width >= obstacle.x && PLAYER_X_OFFSET <= obstacle.x + obstacle.width) {
+          game_over = true;
+        }
+      }
       if (check_if_out_of_bounds(obstacle.x, obstacle.y, obstacle.width, obstacle.height)) {
         obstacle.is_active = false;
         obstacles[i] = obstacle;
         continue;
-      }
-      if (is_right_wall_colliding || is_player_bottom_colliding || is_left_wall_colliding) {
-        game_over = true;
       }
       obstacles[i] = obstacle;
       oled.drawRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height, SSD1306_WHITE);
     }
   }
 
-  oled.setTextSize(0.8);
+  oled.setTextSize(0);
   oled.setCursor(SCREEN_WIDTH / 2 - 10, 0);
   oled.setTextColor(SSD1306_WHITE);
   oled.println("Score: " + String(int(ceil(score))));
@@ -188,7 +181,6 @@ void gameLoop(float deltaTime) {
     player_acceleration_added = 0;
     player_y = SCREEN_HEIGHT - height - PLAYER_Y_OFFSET;
     player_state = 0;
-    time_since_jump = 0;
     time_since_last_spawn = 0;
     game_over = false;
     score = 0;
