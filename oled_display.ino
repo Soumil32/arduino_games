@@ -4,7 +4,7 @@
 
 #define SCREEN_WIDTH 128 // OLED display width,  in pixels
 #define SCREEN_HEIGHT 64 // OLED display height, in pixels
-#define BUTTON_PIN 6
+#define BUTTON_PIN GPIO_NUM_19
 #define PLAYER_JUMP_POWER 35.0
 #define MS_TO_JUMP 1700
 #define OBSTACLE_SPEED 10 // this is in pixels per second
@@ -30,12 +30,13 @@ void setup() {
   pinMode(BUTTON_PIN, INPUT);
   // put your setup code here, to run once:
   // initialize OLED display with address 0x3C for 128x64
+  Serial.println(F("SSD1306 OLED test"));
   if (!oled.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
     Serial.println(F("SSD1306 allocation failed"));
     while (true);
   }
 
-  delay(200); // wait for initializing
+  delay(2000); // wait for initializing
   oled.clearDisplay(); // clear display
   oled.display(); 
 }
