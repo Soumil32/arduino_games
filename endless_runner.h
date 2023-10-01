@@ -58,8 +58,6 @@ public:
         this->score = 0;
         for (int i = 0; i < 10; i++) {
             Obstacle obstacle = obstacles[i];
-            obstacle.is_active = false;
-            obstacles[i] = obstacle;
         }
     }
 };
