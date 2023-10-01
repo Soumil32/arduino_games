@@ -40,8 +40,10 @@ private:
 
     /* private functions */
     bool check_if_out_of_bounds(int x, int y, int width, int height);
-    double get_acceleration(int msToJump, double deltaTime) {
-        return (2 * this->playerJumpPower) / (msToJump * msToJump) * deltaTime;
+    double get_acceleration(int msToJump, int deltaTime) {
+        // the acceleration per millisecond. this will only have to be calculated once for the program
+        static double accelerationPerMs = (double)playerJumpPower / (double)msToJump;
+        return accelerationPerMs * deltaTime; // multiplied by how many milliseconds have passed
     }
 public:
     endless_runner(int buttonPinA, int screenWidth, int screenHeight, Adafruit_SSD1306 oled);
@@ -99,14 +101,14 @@ bool endless_runner::play(double deltaTime) {
         this->playerState = 1;
     }
     if (this->playerState == 1) {
-        double player_acceleration_this_frame = get_acceleration(this->msToJump / 2 , deltaTime);
+        double player_acceleration_this_frame = get_acceleration(this->msToJump / 2 , deltaTime * 1000);
         this->playerY -= player_acceleration_this_frame;
         this->playerAccelerationAdded += player_acceleration_this_frame;
         if (this->playerAccelerationAdded >= this->playerJumpPower) {
         this->playerState = 2;
         }
     } else if (this->playerState == 2) {
-        double player_acceleration_this_frame = get_acceleration(this->msToJump / 2, deltaTime);
+        double player_acceleration_this_frame = get_acceleration(this->msToJump / 2, deltaTime * 1000 );
         this->playerY += player_acceleration_this_frame;
         this->playerAccelerationAdded -= player_acceleration_this_frame;
         if (this->playerAccelerationAdded <= 0) {
