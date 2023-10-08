@@ -1,5 +1,6 @@
 #include <utils.h>
 
+
 void waitForButtonPress(int pin) {
   int pressed = digitalRead(pin);
   while (pressed == LOW) {
@@ -31,4 +32,20 @@ int waitForEitherButtonPress(int pinA, int pinB) {
     }
   }
   return pinA;
+}
+
+/// @brief waits for any of the buttons to be pressed
+/// @param pins the pins of the buttons
+/// @param numOfPins the number of pins
+/// @return which button was pressed
+int waitForAnyButtonPress(int* pins, int numOfPins) {
+  int pressed = -1;
+  while (pressed == -1) {
+    for (int i = 0; i < numOfPins; i++) {
+      if (digitalRead(pins[i]) == HIGH) {
+        pressed = pins[i];
+      }
+    }
+  }
+  return pressed;
 }

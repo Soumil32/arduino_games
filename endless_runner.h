@@ -32,7 +32,7 @@ private:
     float score = 0; // the score of the player
     int screenWidth;
     int screenHeight;
-    Adafruit_SSD1306* oled;
+    Adafruit_SSD1306 oled;
 
     /* Constants */
     const int playerXOffset = 15;
@@ -48,7 +48,7 @@ private:
     double get_acceleration(int msToJump, int deltaTime);
 public:
     EndlessRunner(int buttonPinA, int buttonPinB, int screenWidth, int screenHeight, Adafruit_SSD1306* oled);
-    u_int8_t play(double deltaTime);
+    PlayerState play(double deltaTime);
     ~EndlessRunner();
     void reset();
 };

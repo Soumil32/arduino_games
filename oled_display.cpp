@@ -1,6 +1,7 @@
 #include <Wire.h>
 #include <Adafruit_SSD1306.h>
 #include <endless_runner.h>
+#include <pong.h>
 #include <utils.h>
 #include <game_base_class.h>
 
@@ -8,9 +9,11 @@
 #define SCREEN_HEIGHT 64 // OLED display height, in pixels
 #define BUTTON_PIN_A GPIO_NUM_19
 #define BUTTON_PIN_B GPIO_NUM_34
+#define BUTTON_PIN_C GPIO_NUM_23
 
 enum game_option {
-  endless_runner
+  endless_runner,
+  pong
 };
 
 // declare an SSD1306 display object connected to I2C
@@ -26,7 +29,6 @@ void setup() {
   pinMode(BUTTON_PIN_B, INPUT);
   // put your setup code here, to run once:
   // initialize OLED display with address 0x3C for 128x64
-  Serial.println(F("SSD1306 OLED test"));
   if (!oled.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
     Serial.println(F("SSD1306 allocation failed"));
     while (true);
@@ -41,8 +43,8 @@ Game* displayMenu(Adafruit_SSD1306* oled) {
   (*oled).clearDisplay();
   (*oled).setTextSize(1);
   (*oled).setTextColor(SSD1306_WHITE);
-  const game_option games[] = {endless_runner};
-  const __FlashStringHelper *game_names[] = {F("Endless Runner")};
+  const game_option games[] = {endless_runner, pong};
+  const __FlashStringHelper *game_names[] = {F("Endless Runner"), F("Pong")};
   game_option selected_game = endless_runner;
   while (true) {
     (*oled).clearDisplay();
@@ -65,12 +67,13 @@ Game* displayMenu(Adafruit_SSD1306* oled) {
     } else if (buttonPressed == BUTTON_PIN_A) {
       // start the selected game
       switch (selected_game) {
-        case endless_runner:
-          // return a new endless_runner game
+        case endless_runner: {
           Game* game = new EndlessRunner(BUTTON_PIN_A, BUTTON_PIN_B, SCREEN_WIDTH, SCREEN_HEIGHT, oled);
-          Serial.println("Created new game");
           return game;
-          break;
+        }
+        case pong: {
+          return new Pong(oled, SCREEN_WIDTH, SCREEN_HEIGHT, BUTTON_PIN_A, BUTTON_PIN_B, BUTTON_PIN_C);
+        }
       }
     }
   }
@@ -81,18 +84,18 @@ void loop() {
   {
     Game* game = displayMenu(&oled);
     double deltaTime = 0;
-    u_int8_t result = 0;
-    while (result == 0 || result == 1) {
+    PlayerState result = PlayerState::still_playing;
+    while (result == PlayerState::still_playing || result == PlayerState::restart) {
       int start = millis();
       result = game->play(deltaTime);
       deltaTime = (millis() - start) / 1000.0;
-      if (result == 1) {
+      if (result == PlayerState::restart) {
         deltaTime = 0;
         game->reset();
         continue;
       }
     }
-    if (result == 2) {
+    if (result == PlayerState::quit) {
       delete game;
       continue;
     }

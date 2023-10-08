@@ -20,7 +20,7 @@ EndlessRunner::EndlessRunner(int buttonPinA, int buttonPinB, int screenWidth, in
     this->playerY = screenHeight - playerHeight - playerYOffset;
     this->buttonPinA = buttonPinA;
     this->buttonPinB = buttonPinB;
-    this->oled = oled;
+    this->oled = *oled;
 }
 
 EndlessRunner::~EndlessRunner()
@@ -44,9 +44,9 @@ bool EndlessRunner::check_if_out_of_bounds(int x, int y, int width, int height) 
 /// @brief plays a frame of the game
 /// @param deltaTime the time since the start of the last frame in milliseconds
 /// @return 0 = game is still running, 1 = player has restarted the game, 2 = player has quit the game
-u_int8_t EndlessRunner::play(double deltaTime) {
+PlayerState EndlessRunner::play(double deltaTime) {
     int pressed = digitalRead(this->buttonPinA);
-    (*this->oled).clearDisplay();
+    this->oled.clearDisplay();
     if (pressed == HIGH && this->playerState != 2) { // if the button is pressed and the player is not falling
         this->playerState = 1;
     }
@@ -106,46 +106,45 @@ u_int8_t EndlessRunner::play(double deltaTime) {
                 continue;
             }
             obstacles[i] = obstacle;
-            (*this->oled).drawRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height, SSD1306_WHITE);
+            this->oled.drawRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height, SSD1306_WHITE);
         }
     }
 
-    (*this->oled).drawRect(this->playerXOffset, this->playerY, this->playerWidth, this->playerHeight, SSD1306_WHITE);
-    (*this->oled).drawFastHLine(0, this->screenHeight - this->playerYOffset, this->screenWidth, SSD1306_WHITE);
+    this->oled.drawRect(this->playerXOffset, this->playerY, this->playerWidth, this->playerHeight, SSD1306_WHITE);
+    this->oled.drawFastHLine(0, this->screenHeight - this->playerYOffset, this->screenWidth, SSD1306_WHITE);
     if (this->gameOver) {
-        (*this->oled).clearDisplay();
-        (*this->oled).setTextSize(2);
-        (*this->oled).setCursor(10, 0);
-        (*this->oled).setTextColor(SSD1306_WHITE);
-        (*this->oled).println(F("Game Over"));
-        (*this->oled).setTextSize(1);
-        (*this->oled).setCursor(10, this->screenHeight / 2 - 10);
+        this->oled.clearDisplay();
+        this->oled.setTextSize(2);
+        this->oled.setCursor(10, 0);
+        this->oled.setTextColor(SSD1306_WHITE);
+        this->oled.println(F("Game Over"));
+        this->oled.setTextSize(1);
+        this->oled.setCursor(10, this->screenHeight / 2 - 10);
         String score_string = "";
         score_string.concat(F("Score: "));
         score_string.concat(String(int(floor(score))));
         score_string.concat(F(" points"));
-        (*this->oled).println(score_string);
-        (*this->oled).setCursor(10, this->screenHeight / 2 + 10);
-        (*this->oled).println(F("Press to restart..."));
-        (*this->oled).display();
+        this->oled.println(score_string);
+        this->oled.setCursor(10, this->screenHeight / 2 + 10);
+        this->oled.println(F("Press to restart..."));
+        this->oled.display();
         int buttonPressed = waitForEitherButtonPress(this->buttonPinA, this->buttonPinB);
         waitForButtonRelease(buttonPressed);
         if (buttonPressed == this->buttonPinA) {
             this->reset();
-            return 1;
+            return PlayerState::restart;
         } else if (buttonPressed == this->buttonPinB) {
-            return 2;
+            return PlayerState::quit;
         }
     } else {
         score += 2 * deltaTime;
-        (*this->oled).setTextSize(0);
-        (*this->oled).setCursor(this->screenWidth / 2 - 10, 0);
-        (*this->oled).setTextColor(SSD1306_WHITE);
-        (*this->oled).println("Score: " + String(int(floor(score))));
-        (*this->oled).display();
-        return 0;
+        this->oled.setTextSize(0);
+        this->oled.setCursor(this->screenWidth / 2 - 10, 0);
+        this->oled.setTextColor(SSD1306_WHITE);
+        this->oled.println("Score: " + String(int(floor(score))));
+        this->oled.display();
+        return PlayerState::still_playing;
     }
-    return 0;
 }
 
 double EndlessRunner::get_acceleration(int msToJump, int deltaTime) {
