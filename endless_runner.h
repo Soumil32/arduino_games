@@ -16,6 +16,7 @@ class endless_runner
 private:
     /* data */
     int buttonPinA;
+    int buttonPinB;
     Obstacle obstacles[10]; // An static pool of `n` Obstacle objects
     int playerWidth = 10;
     int playerHeight = 10;
@@ -23,7 +24,7 @@ private:
     short playerState = 0; // 0 = idle, 1 = jumping, 2 = falling
     int timeSinceLastObjectSpawn = 0; // this is the amount of time since an object has been spawned in milliseconds
     double playerAccelerationAdded = 0; // the amount of acceleration added to the player
-    bool gameOver = false; // wether the game is over or not
+    u_int8_t gameOver = false; // wether the game is over or not
     float score = 0; // the score of the player
     int screenWidth;
     int screenHeight;
@@ -33,7 +34,7 @@ private:
     const int playerXOffset = 15;
     const int playerYOffset = 5;
     const int playerJumpPower = 35;
-    const int msToJump = 1700;
+    const int msToJump = 1400;
     const int obstacleSpeed = 10;
     const int obstacleSpawnRateMax = 2500;
     const int obstacleSpawnRateMin = 2000;
@@ -46,28 +47,30 @@ private:
         return accelerationPerMs * deltaTime; // multiplied by how many milliseconds have passed
     }
 public:
-    endless_runner(int buttonPinA, int screenWidth, int screenHeight, Adafruit_SSD1306 oled);
-    bool play(double deltaTime);
+    endless_runner(int buttonPinA, int buttonPinB, int screenWidth, int screenHeight, Adafruit_SSD1306 oled);
+    u_int8_t play(double deltaTime);
     ~endless_runner();
     void reset() {
         this->playerY = this->screenHeight - this->playerHeight - this->playerYOffset;
         this->playerState = 0;
         this->timeSinceLastObjectSpawn = 0;
         this->playerAccelerationAdded = 0;
-        this->gameOver = false;
+        this->gameOver = 0;
         this->score = 0;
         for (int i = 0; i < 10; i++) {
-            Obstacle obstacle = obstacles[i];
+            obstacles[i].is_active = false;
         }
     }
 };
 
-endless_runner::endless_runner(int buttonPinA, int screenWidth, int screenHeight, Adafruit_SSD1306 oled)
+endless_runner::endless_runner(int buttonPinA, int buttonPinB, int screenWidth, int screenHeight, Adafruit_SSD1306 oled)
 {
+    this->reset();
     this->screenWidth = screenWidth;
     this->screenHeight = screenHeight;
     this->playerY = screenHeight - playerHeight - playerYOffset;
     this->buttonPinA = buttonPinA;
+    this->buttonPinB = buttonPinB;
     this->oled = oled;
 }
 
@@ -91,8 +94,8 @@ bool endless_runner::check_if_out_of_bounds(int x, int y, int width, int height)
 
 /// @brief plays a frame of the game
 /// @param deltaTime the time since the start of the last frame in milliseconds
-/// @return if the game is over or not
-bool endless_runner::play(double deltaTime) {
+/// @return 0 = game is still running, 1 = player has restarted the game, 2 = player has quit the game
+u_int8_t endless_runner::play(double deltaTime) {
     int pressed = digitalRead(this->buttonPinA);
     this->oled.clearDisplay();
     if (pressed == HIGH && this->playerState != 2) { // if the button is pressed and the player is not falling
@@ -170,16 +173,20 @@ bool endless_runner::play(double deltaTime) {
         this->oled.setCursor(10, this->screenHeight / 2 - 10);
         String score_string = "";
         score_string.concat(F("Score: "));
-        score_string.concat(int(floor(score)));
+        score_string.concat(String(int(floor(score))));
         score_string.concat(F(" points"));
         this->oled.println(score_string);
         this->oled.setCursor(10, this->screenHeight / 2 + 10);
         this->oled.println(F("Press to restart..."));
         this->oled.display();
-        waitForButtonPress(this->buttonPinA);
-        waitForButtonRelease(this->buttonPinA);
-        this->reset();
-        return true;
+        int buttonPressed = waitForEitherButtonPress(this->buttonPinA, this->buttonPinB);
+        waitForButtonRelease(buttonPressed);
+        if (buttonPressed == this->buttonPinA) {
+            this->reset();
+            return 1;
+        } else if (buttonPressed == this->buttonPinB) {
+            return 2;
+        }
     } else {
         score += 2 * deltaTime;
         this->oled.setTextSize(0);
@@ -187,6 +194,7 @@ bool endless_runner::play(double deltaTime) {
         this->oled.setTextColor(SSD1306_WHITE);
         this->oled.println("Score: " + String(int(floor(score))));
         this->oled.display();
-        return false;
+        return 0;
     }
+    return 0;
 }
