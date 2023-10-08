@@ -41,9 +41,10 @@ class Pong : public Game {
         int upButtonPin;
         int downButtonPin; 
         int acceptButtonPin;
-        int playUntilScore = 1; // play until a player reaches this score
+        u_int playUntilScore = 1; // play until a player reaches this score
 
         /* proccess functions */
         Winner update(double deltaTime);
         PlayerState draw(Winner winner);
+        void askPlayerForInfo();
 };

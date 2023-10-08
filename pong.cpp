@@ -3,16 +3,7 @@
 #include <Arduino.h>
 #include <collision.h>
 
-Pong::Pong(Adafruit_SSD1306* oled, int screenWidth, int screenHeight, int upButtonPin, int downButtonPin, int acceptButtonPin) {
-    this->screenWidth = screenWidth;
-    this->screenHeight = screenHeight;
-    this->oled = *oled;
-    this->upButtonPin = upButtonPin;
-    this->downButtonPin = downButtonPin;
-    this->acceptButtonPin = acceptButtonPin;
-    this-> ballX = this->screenWidth / 2 - this->ballWidth / 2;
-    this->ballY = this->screenHeight / 2 - this->ballHeight / 2;
-
+void Pong::askPlayerForInfo() {
     this->oled.setTextSize(1);
     this->oled.setTextColor(SSD1306_WHITE);
 
@@ -29,12 +20,26 @@ Pong::Pong(Adafruit_SSD1306* oled, int screenWidth, int screenHeight, int upButt
         waitForButtonRelease(buttonPressed);
         if (buttonPressed == this->upButtonPin) {
             this->playUntilScore++;
-        } else if (buttonPressed == this->downButtonPin) {
+        } else if (buttonPressed == this->downButtonPin && this->playUntilScore > 1) {
             this->playUntilScore--;
         } else if (buttonPressed == this->acceptButtonPin) {
             break;
         }
     }
+}
+
+Pong::Pong(Adafruit_SSD1306* oled, int screenWidth, int screenHeight, int upButtonPin, int downButtonPin, int acceptButtonPin) {
+    this->screenWidth = screenWidth;
+    this->screenHeight = screenHeight;
+    this->oled = *oled;
+    this->upButtonPin = upButtonPin;
+    this->downButtonPin = downButtonPin;
+    this->acceptButtonPin = acceptButtonPin;
+    this-> ballX = this->screenWidth / 2 - this->ballWidth / 2;
+    this->ballY = this->screenHeight / 2 - this->ballHeight / 2;
+
+    this->askPlayerForInfo();
+    
     Serial.println(this->playUntilScore);
 }
 
@@ -110,19 +115,15 @@ Winner Pong::update(double deltaTime) {
     // The AI will only move if the ball is moving towards it
     // To make this fair, There is a 20% chance that the AI will not move
 
+    float ballCenter = this->ballY + this->ballHeight / 2;
+    float paddleCenter = this->player2Y + this->playerHeight / 2;
+    float distanceFromCenter = paddleCenter - ballCenter;
+    float normalizedDistance = distanceFromCenter / (this->playerHeight / 2); // normalize the distance to be between -1 and 1
     int random_number = random(0, 100);
-    if (this->ballVelocityX > 0 && random_number > 40 && this->ballX > this->screenWidth / 2) {
-        float ballCenter = this->ballY + this->ballHeight / 2;
-        float paddleCenter = this->player2Y + this->playerHeight / 2;
-        float distanceFromCenter = paddleCenter - ballCenter;
-        float normalizedDistance = distanceFromCenter / (this->playerHeight / 2); // normalize the distance to be between -1 and 1
+    if (this->ballVelocityX > 0 && random_number > 50 && this->ballX > this->screenWidth / 2) {
         this->player2Y -= normalizedDistance * this->playerSpeed * deltaTime;
-    } else if (random_number >= 20 && random_number <= 40) {
+    } else if (random_number >= 35 && random_number <= 50) {
         // go in the opposite direction of the ball
-        float ballCenter = this->ballY + this->ballHeight / 2;
-        float paddleCenter = this->player2Y + this->playerHeight / 2;
-        float distanceFromCenter = paddleCenter - ballCenter;
-        float normalizedDistance = distanceFromCenter / (this->playerHeight / 2); // normalize the distance to be between -1 and 1
         this->player2Y += normalizedDistance * this->playerSpeed * deltaTime;
     }
     if (this->player2Y < 0) {
@@ -159,13 +160,17 @@ PlayerState Pong::draw(Winner winner) {
         }
         this->oled.display();
         int buttons[] = {this->upButtonPin, this->downButtonPin, this->acceptButtonPin};
-        int buttonPressed = waitForAnyButtonPress(buttons, 3);
-        waitForButtonRelease(buttonPressed);
-        if (buttonPressed == this->acceptButtonPin) {
-            return PlayerState::quit;
-        } else if (buttonPressed == this->upButtonPin) {
-            return PlayerState::restart;
-        }
+        do
+        {
+            int buttonPressed = waitForAnyButtonPress(buttons, 3);
+            waitForButtonRelease(buttonPressed);
+            if (buttonPressed == this->acceptButtonPin) {
+                return PlayerState::quit;
+            } else if (buttonPressed == this->upButtonPin) {
+                return PlayerState::restart;
+            }
+        } while (true);
+        
     }
 
     // draw player 1
@@ -206,4 +211,6 @@ void Pong::reset() {
     this->ballVelocityY = 0;
     this->player1Score = 0;
     this->player2Score = 0;
+
+    this->askPlayerForInfo();
 }
