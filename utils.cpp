@@ -1,5 +1,13 @@
 #include <utils.h>
 
+int getAnyButtonPress(int* pins, int numOfPins) {
+  for (int i = 0; i < numOfPins; i++) {
+    if (digitalRead(pins[i]) == HIGH) {
+      return pins[i];
+    }
+  }
+  return -1;
+}
 
 void waitForButtonPress(int pin) {
   int pressed = digitalRead(pin);

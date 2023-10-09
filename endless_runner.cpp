@@ -145,6 +145,7 @@ PlayerState EndlessRunner::play(double deltaTime) {
         this->oled.display();
         return PlayerState::still_playing;
     }
+    return PlayerState::still_playing;
 }
 
 double EndlessRunner::get_acceleration(int msToJump, int deltaTime) {

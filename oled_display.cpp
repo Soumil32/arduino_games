@@ -2,6 +2,7 @@
 #include <Adafruit_SSD1306.h>
 #include <endless_runner.h>
 #include <pong.h>
+#include <click_counter.h>
 #include <utils.h>
 #include <game_base_class.h>
 
@@ -13,7 +14,8 @@
 
 enum game_option {
   endless_runner,
-  pong
+  pong,
+  click_counter
 };
 
 // declare an SSD1306 display object connected to I2C
@@ -43,8 +45,8 @@ Game* displayMenu(Adafruit_SSD1306* oled) {
   (*oled).clearDisplay();
   (*oled).setTextSize(1);
   (*oled).setTextColor(SSD1306_WHITE);
-  const game_option games[] = {endless_runner, pong};
-  const __FlashStringHelper *game_names[] = {F("Endless Runner"), F("Pong")};
+  const game_option games[] = {endless_runner, pong, click_counter};
+  const __FlashStringHelper *game_names[] = {F("Endless Runner"), F("Pong"), F("Click Counter")};
   game_option selected_game = endless_runner;
   while (true) {
     (*oled).clearDisplay();
@@ -73,6 +75,9 @@ Game* displayMenu(Adafruit_SSD1306* oled) {
         }
         case pong: {
           return new Pong(oled, SCREEN_WIDTH, SCREEN_HEIGHT, BUTTON_PIN_A, BUTTON_PIN_B, BUTTON_PIN_C);
+        }
+        case click_counter: {
+          return new ClickCounter(oled, SCREEN_WIDTH, SCREEN_HEIGHT, BUTTON_PIN_A, BUTTON_PIN_B, BUTTON_PIN_C);
         }
       }
     }
